@@ -1,5 +1,9 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Código do Cofre</title>
-<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Work+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -154,6 +158,8 @@
 
   :focus-visible{ outline: 2px solid var(--brass-bright); outline-offset:2px; }
 </style>
+</head>
+<body>
 
 <div class="wrap">
   <header>
@@ -438,9 +444,9 @@
       });
     });
     document.addEventListener("keydown", function(ev){
-      if (ev.key >= "0" && ev.key <= "9") onKey(ev.key);
-      else if (ev.key === "Backspace") onKey("back");
-      else if (ev.key === "Enter") onKey("submit");
+      if (ev.key >= "0" && ev.key <= "9"){ ev.preventDefault(); onKey(ev.key); }
+      else if (ev.key === "Backspace"){ ev.preventDefault(); onKey("back"); }
+      else if (ev.key === "Enter"){ ev.preventDefault(); onKey("submit"); }
     });
   }
 
@@ -456,3 +462,5 @@
   }
 })();
 </script>
+</body>
+</html>
