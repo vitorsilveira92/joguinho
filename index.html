@@ -1,0 +1,458 @@
+<title>Código do Cofre</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Work+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  /* layout: a brass dial panel up top, a scrolling logbook of past attempts below it */
+  :root{
+    --bg: #171208;
+    --bg-panel: #221b10;
+    --bg-panel-raised: #2b2214;
+    --panel-border: #3f331c;
+    --fg: #f1e6cf;
+    --muted: #a6936c;
+    --brass: #c9a227;
+    --brass-bright: #f0c75e;
+    --exact: #5fae6e;
+    --present: #4f8fa6;
+    --danger: #b1503f;
+    --font-display: 'Fraunces', Georgia, serif;
+    --font-body: 'Work Sans', system-ui, sans-serif;
+    --font-mono: 'Space Mono', 'Courier New', monospace;
+    color-scheme: dark;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    background: radial-gradient(circle at 50% -10%, #2c2211 0%, var(--bg) 55%);
+    color: var(--fg);
+    font-family: var(--font-body);
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 20px 32px;
+    display:flex;
+    justify-content:center;
+  }
+
+  .wrap{ width:100%; max-width:460px; display:flex; flex-direction:column; gap:16px; }
+
+  header{ text-align:center; display:flex; flex-direction:column; gap:4px; }
+  h1{
+    font-family: var(--font-display);
+    font-weight:700;
+    font-size: clamp(1.6rem, 6vw, 2.1rem);
+    letter-spacing:0.01em;
+    margin:0;
+    text-wrap:balance;
+    color: var(--brass-bright);
+  }
+  .tagline{ color:var(--muted); font-size:0.85rem; margin:0; }
+
+  .panel{
+    background: var(--bg-panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 18px;
+    padding: 16px;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 12px 24px -16px rgba(0,0,0,0.6);
+  }
+
+  .diffs{ display:flex; gap:8px; }
+  .diff-btn{
+    flex:1; min-width:0;
+    font-family: var(--font-body); font-weight:600; font-size:0.78rem;
+    padding:9px 4px; border-radius:10px; border:1px solid var(--panel-border);
+    background: var(--bg-panel-raised); color: var(--muted);
+    cursor:pointer; transition: border-color .15s, color .15s, background .15s;
+  }
+  .diff-btn[aria-pressed="true"]{
+    color: #1a1407; background: var(--brass-bright); border-color: var(--brass-bright);
+  }
+
+  .status-row{
+    display:flex; justify-content:space-between; align-items:baseline;
+    font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+    font-size:0.78rem; color: var(--muted); padding: 2px 2px 0;
+  }
+  .status-row b{ color: var(--fg); font-weight:700; }
+
+  .slots{ display:flex; gap:8px; justify-content:center; margin-top:10px; }
+  .slot{
+    width:46px; height:56px; border-radius:10px;
+    border:2px solid var(--panel-border);
+    background: var(--bg);
+    display:flex; align-items:center; justify-content:center;
+    font-family: var(--font-mono); font-weight:700; font-size:1.5rem;
+    color: var(--brass-bright);
+    transition: border-color .15s, transform .15s;
+  }
+  .slot.filled{ border-color: var(--brass); }
+  .slot.active{ border-color: var(--brass-bright); box-shadow: 0 0 0 3px rgba(240,199,94,0.18); }
+  .slot.shake{ animation: shake .32s; }
+  @keyframes shake{
+    0%,100%{ transform: translateX(0); }
+    25%{ transform: translateX(-5px); }
+    75%{ transform: translateX(5px); }
+  }
+  @media (prefers-reduced-motion: reduce){ .slot.shake{ animation:none; } }
+
+  .keypad{ display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; margin-top:14px; }
+  .key{
+    font-family: var(--font-mono); font-weight:700; font-size:1.15rem;
+    padding:14px 0; border-radius:12px; border:1px solid var(--panel-border);
+    background: var(--bg-panel-raised); color: var(--fg);
+    cursor:pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .key:active{ background: var(--panel-border); }
+  .key.back{ color: var(--danger); font-size:1rem; }
+  .key.submit{ background: var(--brass); color:#1a1407; border-color: var(--brass); font-size:1rem; }
+  .key.submit:active{ background: var(--brass-bright); }
+  .key:disabled{ opacity:0.35; cursor:default; }
+
+  .banner{
+    border-radius:14px; padding:14px 16px; font-family: var(--font-body);
+    font-weight:600; font-size:0.9rem; display:none; flex-direction:column; gap:10px;
+    align-items:flex-start;
+  }
+  .banner.show{ display:flex; }
+  .banner.win{ background: rgba(95,174,110,0.14); border:1px solid var(--exact); color:#bfe8c8; }
+  .banner.lose{ background: rgba(177,80,63,0.14); border:1px solid var(--danger); color:#f0c7bd; }
+  .banner .code{ font-family: var(--font-mono); letter-spacing:0.1em; font-size:1.1rem; color: var(--brass-bright); }
+  .again{
+    font-family: var(--font-body); font-weight:600; font-size:0.82rem;
+    padding:8px 14px; border-radius:9px; border:1px solid currentColor;
+    background:transparent; color:inherit; cursor:pointer;
+  }
+
+  .log-title{ font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin: 4px 2px; }
+  .log{ display:flex; flex-direction:column; gap:8px; max-height:40vh; overflow-y:auto; }
+  .log-row{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    background: var(--bg-panel-raised); border:1px solid var(--panel-border);
+    border-radius:10px; padding:8px 10px;
+    animation: slidein .22s ease-out;
+  }
+  @media (prefers-reduced-motion: reduce){ .log-row{ animation:none; } }
+  @keyframes slidein{ from{ opacity:0; transform: translateY(-6px); } to{ opacity:1; transform:translateY(0); } }
+  .log-digits{ display:flex; gap:5px; font-family: var(--font-mono); font-weight:700; font-size:0.95rem; color: var(--fg); }
+  .log-digits span{
+    width:24px; height:28px; border-radius:6px; background:var(--bg);
+    display:flex; align-items:center; justify-content:center; border:1px solid var(--panel-border);
+  }
+  .log-pegs{ display:flex; gap:4px; flex-shrink:0; }
+  .peg{ width:12px; height:12px; border-radius:50%; border:1.5px solid var(--panel-border); background:transparent; }
+  .peg.exact{ background: var(--exact); border-color: var(--exact); }
+  .peg.present{ background: var(--present); border-color: var(--present); }
+  .log-empty{ color: var(--muted); font-size:0.82rem; text-align:center; padding:14px 0; }
+
+  details.howto{ color: var(--muted); font-size:0.82rem; }
+  details.howto summary{ cursor:pointer; color: var(--brass); font-weight:600; list-style:none; }
+  details.howto summary::-webkit-details-marker{ display:none; }
+  details.howto p{ margin:8px 2px 0; line-height:1.5; }
+  details.howto .peg{ display:inline-block; vertical-align:middle; }
+
+  :focus-visible{ outline: 2px solid var(--brass-bright); outline-offset:2px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Código do Cofre</h1>
+    <p class="tagline">Decifre a combinação secreta usando lógica e as pistas de cada tentativa.</p>
+  </header>
+
+  <div class="panel">
+    <div class="diffs" role="group" aria-label="Dificuldade">
+      <button class="diff-btn" data-diff="facil" aria-pressed="false">Fácil · 4 díg · 10 tentativas</button>
+      <button class="diff-btn" data-diff="normal" aria-pressed="false">Normal · 4 díg · 8 tentativas</button>
+      <button class="diff-btn" data-diff="dificil" aria-pressed="false">Difícil · 5 díg · 8 tentativas</button>
+    </div>
+    <div class="status-row">
+      <span>Tentativas: <b id="triesLeft">–</b>/<span id="triesMax">–</span></span>
+      <span>Melhor: <b id="bestScore">—</b></span>
+    </div>
+
+    <div class="slots" id="slots"></div>
+
+    <div class="banner" id="banner">
+      <div id="bannerText"></div>
+      <button class="again" id="againBtn">Jogar de novo</button>
+    </div>
+
+    <div class="keypad" id="keypad">
+      <button class="key" data-key="1">1</button>
+      <button class="key" data-key="2">2</button>
+      <button class="key" data-key="3">3</button>
+      <button class="key" data-key="4">4</button>
+      <button class="key" data-key="5">5</button>
+      <button class="key" data-key="6">6</button>
+      <button class="key" data-key="7">7</button>
+      <button class="key" data-key="8">8</button>
+      <button class="key" data-key="9">9</button>
+      <button class="key back" data-key="back">⌫ apagar</button>
+      <button class="key" data-key="0">0</button>
+      <button class="key submit" data-key="submit">✓ Tentar</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <details class="howto">
+      <summary>Como jogar</summary>
+      <p>
+        Existe um código secreto de dígitos (0–9, podem repetir). Monte um palpite e toque em "Tentar".
+        Depois de cada tentativa você recebe pistas, uma por dígito do código:
+      </p>
+      <p>
+        <span class="peg exact"></span> pino verde: um dígito certo <em>na posição certa</em>.<br>
+        <span class="peg present"></span> pino azul: um dígito certo, só que <em>na posição errada</em>.
+      </p>
+      <p>As pistas não dizem qual posição é qual — use a eliminação para fechar o cerco.</p>
+    </details>
+  </div>
+
+  <div>
+    <div class="log-title">Tentativas anteriores</div>
+    <div class="log" id="log"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var DIFFS = {
+    facil:   { digits:4, tries:10, label:"Fácil" },
+    normal:  { digits:4, tries:8,  label:"Normal" },
+    dificil: { digits:5, tries:8,  label:"Difícil" }
+  };
+
+  var state = null;
+
+  function safeGet(key){
+    try { return localStorage.getItem(key); } catch(e){ return null; }
+  }
+  function safeSet(key, val){
+    try { localStorage.setItem(key, val); } catch(e){ /* ignore */ }
+  }
+
+  function randomSecret(len){
+    var arr = [];
+    for (var i=0;i<len;i++) arr.push(Math.floor(Math.random()*10));
+    return arr;
+  }
+
+  function feedback(guess, secret){
+    var exact = 0;
+    var sRest = [], gRest = [];
+    for (var i=0;i<secret.length;i++){
+      if (guess[i] === secret[i]) exact++;
+      else { sRest.push(secret[i]); gRest.push(guess[i]); }
+    }
+    var counts = {};
+    sRest.forEach(function(d){ counts[d] = (counts[d]||0) + 1; });
+    var present = 0;
+    gRest.forEach(function(d){
+      if (counts[d] > 0){ present++; counts[d]--; }
+    });
+    return { exact: exact, present: present };
+  }
+
+  function newGame(diffKey, data){
+    var cfg = DIFFS[diffKey];
+    state = {
+      diff: diffKey,
+      secret: (data && data.secret) || randomSecret(cfg.digits),
+      current: (data && data.current) || [],
+      history: (data && data.history) || [],
+      triesLeft: (data && typeof data.triesLeft === "number") ? data.triesLeft : cfg.tries,
+      over: (data && data.over) || false,
+      result: (data && data.result) || null
+    };
+    render();
+  }
+
+  function els(){
+    return {
+      slots: document.getElementById("slots"),
+      triesLeft: document.getElementById("triesLeft"),
+      triesMax: document.getElementById("triesMax"),
+      bestScore: document.getElementById("bestScore"),
+      banner: document.getElementById("banner"),
+      bannerText: document.getElementById("bannerText"),
+      log: document.getElementById("log"),
+      keypad: document.getElementById("keypad")
+    };
+  }
+
+  function bestKey(diffKey){ return "cofre-best-" + diffKey; }
+
+  function renderBest(){
+    var e = els();
+    var raw = safeGet(bestKey(state.diff));
+    e.bestScore.textContent = raw ? (raw + (parseInt(raw,10) === 1 ? " tentativa" : " tentativas")) : "—";
+  }
+
+  function render(){
+    var e = els();
+    var cfg = DIFFS[state.diff];
+
+    document.querySelectorAll(".diff-btn").forEach(function(b){
+      b.setAttribute("aria-pressed", b.dataset.diff === state.diff ? "true" : "false");
+    });
+
+    e.triesLeft.textContent = state.triesLeft;
+    e.triesMax.textContent = cfg.tries;
+    renderBest();
+
+    e.slots.innerHTML = "";
+    for (var i=0;i<cfg.digits;i++){
+      var s = document.createElement("div");
+      s.className = "slot";
+      if (i < state.current.length){ s.classList.add("filled"); s.textContent = state.current[i]; }
+      else { s.textContent = "–"; }
+      if (i === state.current.length && !state.over) s.classList.add("active");
+      e.slots.appendChild(s);
+    }
+
+    var keys = e.keypad.querySelectorAll(".key");
+    keys.forEach(function(k){ k.disabled = !!state.over; });
+
+    e.log.innerHTML = "";
+    if (state.history.length === 0){
+      var empty = document.createElement("div");
+      empty.className = "log-empty";
+      empty.textContent = "Nenhuma tentativa ainda. Faça seu primeiro palpite.";
+      e.log.appendChild(empty);
+    } else {
+      for (var h = state.history.length - 1; h >= 0; h--){
+        e.log.appendChild(buildLogRow(state.history[h], cfg.digits));
+      }
+    }
+
+    if (state.over){
+      e.banner.classList.add("show");
+      if (state.result === "win"){
+        e.banner.classList.remove("lose"); e.banner.classList.add("win");
+        e.bannerText.innerHTML = "Cofre aberto! Levou " + state.history.length +
+          (state.history.length === 1 ? " tentativa." : " tentativas.");
+      } else {
+        e.banner.classList.remove("win"); e.banner.classList.add("lose");
+        e.bannerText.innerHTML = "O cofre ficou trancado. O código era <span class='code'>" +
+          state.secret.join(" ") + "</span>.";
+      }
+    } else {
+      e.banner.classList.remove("show", "win", "lose");
+    }
+
+    saveSnapshot();
+  }
+
+  function buildLogRow(entry, len){
+    var row = document.createElement("div");
+    row.className = "log-row";
+
+    var digits = document.createElement("div");
+    digits.className = "log-digits";
+    entry.guess.forEach(function(d){
+      var sp = document.createElement("span");
+      sp.textContent = d;
+      digits.appendChild(sp);
+    });
+
+    var pegs = document.createElement("div");
+    pegs.className = "log-pegs";
+    var total = len, exact = entry.exact, present = entry.present;
+    for (var i=0;i<total;i++){
+      var p = document.createElement("div");
+      p.className = "peg" + (i < exact ? " exact" : (i < exact + present ? " present" : ""));
+      pegs.appendChild(p);
+    }
+
+    row.appendChild(digits);
+    row.appendChild(pegs);
+    return row;
+  }
+
+  function shakeSlots(){
+    var e = els();
+    e.slots.querySelectorAll(".slot").forEach(function(s){
+      s.classList.add("shake");
+      setTimeout(function(){ s.classList.remove("shake"); }, 350);
+    });
+  }
+
+  function onKey(key){
+    if (state.over) return;
+    var cfg = DIFFS[state.diff];
+
+    if (key === "back"){
+      state.current.pop();
+      render();
+      return;
+    }
+    if (key === "submit"){
+      if (state.current.length !== cfg.digits){ shakeSlots(); return; }
+      var fb = feedback(state.current, state.secret);
+      state.history.push({ guess: state.current.slice(), exact: fb.exact, present: fb.present });
+      state.triesLeft--;
+
+      if (fb.exact === cfg.digits){
+        state.over = true; state.result = "win";
+        var prevBest = parseInt(safeGet(bestKey(state.diff)) || "", 10);
+        if (isNaN(prevBest) || state.history.length < prevBest){
+          safeSet(bestKey(state.diff), String(state.history.length));
+        }
+      } else if (state.triesLeft <= 0){
+        state.over = true; state.result = "lose";
+      }
+      state.current = [];
+      render();
+      return;
+    }
+    if (state.current.length < cfg.digits){
+      state.current.push(parseInt(key, 10));
+      render();
+    }
+  }
+
+  function saveSnapshot(){
+    try {
+      if (window.claude && window.claude.hot && window.claude.hot.snapshot){
+        window.claude.hot.snapshot(state);
+      }
+    } catch(e){ /* ignore */ }
+  }
+
+  function bindUI(){
+    document.getElementById("keypad").addEventListener("click", function(ev){
+      var btn = ev.target.closest(".key");
+      if (!btn) return;
+      onKey(btn.dataset.key);
+    });
+    document.getElementById("againBtn").addEventListener("click", function(){
+      newGame(state.diff);
+    });
+    document.querySelectorAll(".diff-btn").forEach(function(b){
+      b.addEventListener("click", function(){
+        if (b.dataset.diff !== state.diff) newGame(b.dataset.diff);
+      });
+    });
+    document.addEventListener("keydown", function(ev){
+      if (ev.key >= "0" && ev.key <= "9") onKey(ev.key);
+      else if (ev.key === "Backspace") onKey("back");
+      else if (ev.key === "Enter") onKey("submit");
+    });
+  }
+
+  function start(data){
+    bindUI();
+    newGame((data && data.diff) || "normal", data && data.diff ? data : null);
+  }
+
+  if (window.claude && window.claude.hot && window.claude.hot.ready){
+    window.claude.hot.ready(start);
+  } else {
+    start(window.claude && window.claude.hot ? window.claude.hot.data : null);
+  }
+})();
+</script>
